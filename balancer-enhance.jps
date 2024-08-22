@@ -1,0 +1,29 @@
+version: '1.6.2'
+type: update
+id: 'balancer-enhance'
+name: 'Load Balancer enhancement'
+baseUrl: https://raw.githubusercontent.com/layershift/jps-balancer-enhance/main
+
+targetNodes:
+  nodeGroup: bl
+
+onAfterRedeployContainer:
+  install_action
+
+onInstall:
+  install_action
+
+onUninstall:
+  uninstall_action
+
+
+actions:
+  install_action:
+    cmd[${targetNodes.nodeGroup}]:
+      - curl -fsSL '${baseUrl}/scripts/sudo_balancer_enhance' -o /etc/sudoers.d/balancer_enhance;
+    user: root
+
+  uninstall_action:
+    cmd[${targetNodes.nodeGroup}]:
+      - rm -f /etc/sudoers.d/balancer_enhance;
+    user: root

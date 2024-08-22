@@ -1,0 +1,3 @@
+Cmnd_Alias BALANCERENHANCE = /usr/bin/jem balancer * 
+
+%ssh-access ALL = NOPASSWD: BALANCERENHANCE
