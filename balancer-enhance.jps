@@ -1,14 +1,64 @@
-version: '1.6.2'
+version: '8.6.2'
 type: update
 id: 'balancer-enhance'
-name: 'Load Balancer enhancement'
+name: 'Loadbalance to this layer'
 baseUrl: https://raw.githubusercontent.com/layershift/jps-balancer-enhance/main
+description: Will add all the nodes from this layer to the load balancer configuration, along with any, already existing, nodes from other layers.
 
 targetNodes:
-  nodeGroup: bl
+  nodeGroup: 
+    - cp2
+    - cp3
+    - cp4
+    - cp5
+    - cp6
+    - cp7
+    - cp8
+    - cp9
+    - extra
 
-onAfterRedeployContainer:
+menu:
+  - caption: Add nodes to LB config
+    confirmText: Are you sure you add nodes from this layer to the LB config?
+    action: reAddLayerNodes 
+    successText: Success
+
+  - caption: Remove nodes from LB config
+    confirmText: Are you sure you remove nodes from this layer from the LB config?
+    action: removeLayerNodes 
+    successText: Success
+
+onAfterRedeployContainer[nodeGroup:bl]:
   install_action
+
+onBeforeRedeployContainer[${targetNodes.nodeGroup}]:
+  if (/^[0-9]*/.test("${event.params.nodeId}")):
+    removeNodeIP:
+      nodeID: "${event.params.nodeId}"
+      manageDNSState: "${event.params.manageDNSState}"
+
+onBeforeRemoveNode[${targetNodes.nodeGroup}]:
+  removeNodeIP:
+    nodeID: "${event.params.nodeId}"
+    manageDNSState: true
+
+
+
+onAfterRedeployContainer[${targetNodes.nodeGroup}]:
+  if (/^[0-9]*/.test("${event.params.nodeId}")):
+    addNodeIP:
+      nodeID: ${event.params.nodeId}
+      manageDNSState: ${event.params.manageDNSState}
+
+onAfterScaleOut:
+  forEach(node:event.response.nodes):
+    addNodeIP:
+      nodeID: "${@node.id}"
+      manageDNSState: true
+
+
+
+
 
 onInstall:
   install_action
@@ -19,11 +69,60 @@ onUninstall:
 
 actions:
   install_action:
-    cmd[${targetNodes.nodeGroup}]:
+    cmd[bl]:
       - curl -fsSL '${baseUrl}/scripts/sudo_balancer_enhance' -o /etc/sudoers.d/balancer_enhance;
     user: root
 
   uninstall_action:
-    cmd[${targetNodes.nodeGroup}]:
+    cmd[bl]:
       - rm -f /etc/sudoers.d/balancer_enhance;
     user: root
+
+  addNodeIP:
+    - if(${this.manageDNSState}==true):
+        forEach(node:nodes.${targetNodes.nodeGroup}):
+          if(${@node.id}==${this.nodeID}):
+            log: 
+            - ${@node.id}
+            - ${@node.address}
+            cmd[bl]:
+              - jem balancer AddCommonHost -h ${@node.address}
+              - jem balancer rebuildCommon --timeout 3570
+            user: root
+    - log:
+      - nodeID=${this.nodeID}
+      - manageDNSState=${this.manageDNSState}
+
+  removeNodeIP:
+    - if(${this.manageDNSState}==true):
+        forEach(node:nodes.${targetNodes.nodeGroup}):
+          if(${@node.id}==${this.nodeID}):
+            log: 
+            - ${@node.id}
+            - ${@node.address}
+            cmd[bl]:
+              - jem balancer RemoveCommonHost -h ${@node.address}
+              - jem balancer rebuildCommon --timeout 3570
+            user: root
+    - log:
+      - nodeID=${this.nodeID}
+      - manageDNSState=${this.manageDNSState}
+
+  reAddLayerNodes:
+    - forEach(node:nodes.${targetNodes.nodeGroup}):
+        cmd[bl]:
+          - jem balancer RemoveCommonHost -h ${@node.address}
+          - jem balancer AddCommonHost -h ${@node.address}
+        user: root
+    - cmd[bl]:
+        - jem balancer rebuildCommon --timeout 3570
+      user: root
+
+  removeLayerNodes:
+    - forEach(node:nodes.${targetNodes.nodeGroup}):
+        cmd[bl]:
+          - jem balancer RemoveCommonHost -h ${@node.address}
+        user: root
+    - cmd[bl]:
+        - jem balancer rebuildCommon --timeout 3570
+      user: root
