@@ -1,11 +1,29 @@
 # jps-balancer-enhance
-An add-on to enhance the jem balancer functionality on BL layers
+An add-on to enhance the jem balancer functionality on LB layers. It can be installed on CP2-9 or Extra layers.
 
 It will allow you to add nodes from other layers to the load balancer configuration
 ```
 sudo jem balancer addCommonHost -h 10.x.x.x
 sudo jem balancer rebuildCommon
 ```
+
+Handled events:
+* onAfterRedeployContainer[nodeGroup:bl]:
+  - install the scripts on the LB layer
+* onBeforeRedeployContainer[${targetNodes.nodeGroup}]:
+  - remove the node from the LB config if "Temporarily remove node(s) from DNS" is enabled
+* onAfterRedeployContainer[${targetNodes.nodeGroup}]:
+  - add the node back to the LB config if "Temporarily remove node(s) from DNS" is enabled
+* onBeforeRemoveNode[${targetNodes.nodeGroup}]:
+ - remove the node from the LB config before it's removed from the environment
+* onAfterScaleOut:
+ - add new nodes from the layer to the LB config
+
+Menu items:
+* Add nodes to LB config
+ - reAdds all the layer nodes to the LB config
+* Remove nodes from LB config
+ - removes all the layer nodes from the LB config
 
 Other available options:
 ```
